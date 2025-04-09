@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Объявления</h1>
+
+    <div class="advertisements">
+        {% for advertisement in advertisements %}
+            <div class="advertisement">
+                <h2><a href="{% url 'advertisement_detail' advertisement.id %}">{{ advertisement.title }}</a></h2>
+                <p>{{ advertisement.content|truncatewords:20 }}</p>
+                <p>Категория: {{ advertisement.get_category_display }}</p>
+                <p>Дата создания: {{ advertisement.created_at }}</p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Пагинация -->
+    <div class="pagination">
+        <span class="step-links">
+            {% if advertisements.has_previous %}
+                <a href="?page=1">&laquo; первая</a>
+                <a href="?page={{ advertisements.previous_page_number }}">предыдущая</a>
+            {% endif %}
+
+            <span class="current">
+                Страница {{ advertisements.number }} из {{ advertisements.paginator.num_pages }}.
+            </span>
+
+            {% if advertisements.has_next %}
+                <a href="?page={{ advertisements.next_page_number }}">следующая</a>
+                <a href="?page={{ advertisements.paginator.num_pages }}">последняя &raquo;</a>
+            {% endif %}
+        </span>
+    </div>
+{% endblock %}

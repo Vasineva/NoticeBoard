@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Создание объявления{% endblock %}</title>
+
+    <!-- Bootstrap Slate Theme -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.2/dist/slate/bootstrap.min.css">
+
+    <!-- Подключение TinyMCE -->
+    <script src="https://cdn.tiny.cloud/1/your-api-key/tinymce/5/tinymce.min.js"></script>
+
+    <!-- Дополнительные стили -->
+    <style>
+        body {
+            padding-top: 70px;
+        }
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .ck-editor__editable_inline {
+            min-height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Навигационная панель -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark static-top">
+        <div class="container">
+            <a class="navbar-brand" href="/">Новостной портал</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="navbarResponsive">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="/posts/">Новости</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/posts/search/">Поиск</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/">Личный кабинет</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Контент -->
+    <main class="container">
+        {% block content %}
+        <h1>Создать новое объявление</h1>
+
+        <!-- Формы создания объявления -->
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Создать объявление</button>
+        </form>
+        {% endblock %}
+    </main>
+
+    <!-- JavaScript для загрузки медиафайлов -->
+    <script>
+        var csrf_token = '{{ csrf_token }}';
+
+        tinymce.init({
+            selector: '#id_content',
+            plugins: 'image media link',
+            language: 'ru',
+            toolbar: 'undo redo | styleselect | bold italic | alignleft aligncenter alignright | image media | link | fullscreen',
+            file_picker_callback: function(callback, value, meta) {
+                if (meta.filetype === 'image') {
+                    var input = document.createElement('input');
+                    input.setAttribute('type', 'file');
+                    input.setAttribute('accept', 'image/*');
+                    input.click();
+
+                    input.onchange = function() {
+                        var file = input.files[0];
+                        var formData = new FormData();
+                        formData.append('file', file);  // <--- ВАЖНО: 'file', а не 'upload'
+
+                        fetch('/tinymce/upload/', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': csrf_token,
+                                'Referer': window.location.href,
+                            },
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.location) {
+                                callback(data.location, { alt: file.name });
+                            } else {
+                                console.error('Ошибка загрузки файла');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Ошибка при загрузке файла:', error);
+                        });
+                    };
+                }
+            }
+        });
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

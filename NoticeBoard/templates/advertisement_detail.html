@@ -2,40 +2,40 @@
 
 {% block content %}
     <h1>{{ advertisement.title }}</h1>
-    <p>Категория: {{ advertisement.get_category_display }}</p>
-    <p>Дата создания: {{ advertisement.created_at }}</p>
+<p>Категория: {{ advertisement.get_category_display }}</p>
+<p>Дата создания: {{ advertisement.created_at }}</p>
 
-    <div class="content">
-        {{ advertisement.content|safe }}
-    </div>
+<div class="content">
+    {{ advertisement.content|safe }}
+</div>
 
-    <h3>Медиа</h3>
-    <div class="media">
-        {% for media in media_files %}
-            <div class="media-item">
-                {% if media.media_type == 'image' %}
-                    <img src="{{ media.file.url }}" alt="Image" />
-                {% elif media.media_type == 'video' %}
-                    <video controls>
-                        <source src="{{ media.file.url }}" type="video/mp4">
-                    </video>
-                {% elif media.media_type == 'gif' %}
-                    <img src="{{ media.file.url }}" alt="GIF" />
-                {% endif %}
-            </div>
-        {% endfor %}
-    </div>
+<div class="media">
+    {% for media in advertisement.media.all %}
+        <div class="media-item">
+            {% if media.media_type == 'image' %}
+                <img src="{{ media.file.url }}" alt="Image" />
+            {% elif media.media_type == 'video' %}
+                <video controls>
+                    <source src="{{ media.file.url }}" type="video/mp4">
+                </video>
+            {% endif %}
+        </div>
+    {% empty %}
+        <p>Нет медиафайлов.</p>
+    {% endfor %}
+</div>
 
-    <h3>Отклики</h3>
-    <div class="responses">
-        {% for response in accepted_responses %}
-            <div class="response">
-                <p><strong>{{ response.author.username }}</strong>: {{ response.content }}</p>
-                <p>Дата отклика: {{ response.created_at }}</p>
-            </div>
-        {% empty %}
-            <p>Нет откликов.</p>
-        {% endfor %}
-    </div>
+<h3>Отклики</h3>
+<div class="responses">
+    {% for response in accepted_responses %}
+        <div class="response">
+            <p><strong>{{ response.author.username }}</strong>: {{ response.content }}</p>
+            <p>Дата отклика: {{ response.created_at }}</p>
+        </div>
+    {% empty %}
+        <p>Нет откликов.</p>
+    {% endfor %}
+</div>
+
 
 {% endblock %}

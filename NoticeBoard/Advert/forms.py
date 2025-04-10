@@ -19,7 +19,7 @@ from tinymce.widgets import TinyMCE
 class AdvertisementForm(forms.ModelForm):
     class Meta:
         model = Advertisement
-        fields = ['title', 'content', 'category']  # Убираем все медиа-поля
+        fields = ['title', 'content', 'category']
 
     title = forms.CharField(label='Заголовок', max_length=255, min_length=5)
     category = forms.ChoiceField(label='Категория', choices=CATEGORY_CHOICES)
@@ -41,5 +41,4 @@ class AdvertisementForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        # Поскольку проверка медиафайлов теперь не требуется, оставляем метод без изменений
         return cleaned_data

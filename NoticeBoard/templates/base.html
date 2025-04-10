@@ -64,19 +64,36 @@
             plugins: 'image media link',
             language: 'ru',
             toolbar: 'undo redo | styleselect | bold italic | alignleft aligncenter alignright | image media | link | fullscreen',
+            relative_urls: false,
+            convert_urls: false,
             file_picker_callback: function(callback, value, meta) {
                 if (meta.filetype === 'image') {
                     var input = document.createElement('input');
                     input.setAttribute('type', 'file');
-                    input.setAttribute('accept', 'image/*');
+
+                    // Обработка изображения
+                    if (meta.filetype === 'image') {
+                        input.setAttribute('accept', 'image/*');
+                    }
+
+                    // Обработка медиа (видео)
+                    else if (meta.filetype === 'media') {
+                        input.setAttribute('accept', 'video/*');
+                    }
+
+                    // Если это не изображение и не видео, ничего не делаем
+                    else {
+                        return;
+                    }
+
                     input.click();
 
                     input.onchange = function() {
                         var file = input.files[0];
                         var formData = new FormData();
-                        formData.append('file', file);  // <--- ВАЖНО: 'file', а не 'upload'
+                        formData.append('file', file);
 
-                        fetch('/tinymce/upload/', {
+                        fetch('/Advert/tinymce/upload/', {
                             method: 'POST',
                             headers: {
                                 'X-CSRFToken': csrf_token,
@@ -87,7 +104,12 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.location) {
-                                callback(data.location, { alt: file.name });
+                                if (meta.filetype === 'image') {
+                                    callback(data.location, { alt: file.name });
+                                }
+                                else if (meta.filetype === 'media') {
+                                    callback(data.location, { poster: file.name });
+                                }
                             } else {
                                 console.error('Ошибка загрузки файла');
                             }

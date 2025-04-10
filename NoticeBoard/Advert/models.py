@@ -78,10 +78,10 @@ class Newsletter(models.Model):
 
 class Media(models.Model):
     advertisement = models.ForeignKey('Advertisement', on_delete=models.CASCADE, related_name='media')
-    file = models.FileField(upload_to='ads/media/', blank=True, null=True)  # Медиафайл (картинка, видео, гифка)
+    file = models.FileField(upload_to='ads/media/', blank=True, null=True)
     media_type = models.CharField(
-        max_length=10,  # Задаём максимальную длину строки для типа медиа
-        choices=[('image', 'Изображение'), ('video', 'Видео'), ('gif', 'Гифка')],
+        max_length=10,
+        choices=[('image', 'Изображение'), ('video', 'Видео')],
         blank=True,
         null=True  # Поле не обязательно для заполнения
     )

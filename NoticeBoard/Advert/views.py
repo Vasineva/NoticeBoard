@@ -1,5 +1,3 @@
-
-
 from django.views.generic import CreateView, ListView, DetailView
 from django.urls import reverse_lazy
 from .models import Advertisement
@@ -9,22 +7,26 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from django.conf import settings
 import os
-
+import uuid
 
 @csrf_exempt
 def upload_media(request):
-    if request.method == 'POST' and request.FILES.get('file'):  # Получаем через 'file'
+    if request.method == 'POST' and request.FILES.get('file'):
         uploaded_file = request.FILES['file']
 
-        # Сохраняем файл в папку 'uploads'
-        file_name = default_storage.save(os.path.join('uploads', uploaded_file.name), ContentFile(uploaded_file.read()))
-        file_url = default_storage.url(file_name)
+        # Генерируем уникальное имя файла
+        filename = f"{uuid.uuid4()}-{uploaded_file.name}"
+        relative_path = os.path.join('uploads', filename)
 
-        # Возвращаем URL изображения для TinyMCE
-        return JsonResponse({
-            'location': file_url
-        })
+        # Сохраняем файл в /media/uploads/
+        default_storage.save(relative_path, ContentFile(uploaded_file.read()))
+
+        # Возвращаем абсолютный URL (MEDIA_URL + путь)
+        file_url = settings.MEDIA_URL + relative_path.replace("\\", "/")
+
+        return JsonResponse({'location': file_url})
 
     return JsonResponse({'error': 'Нет файла для загрузки'}, status=400)
 

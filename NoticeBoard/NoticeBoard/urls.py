@@ -20,18 +20,16 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
-from Advert.views import upload_media
+
 
 
 
 urlpatterns = [
-    # Административная панель
     path('admin/', admin.site.urls),
     path('Advert/', include('Advert.urls')),
     path('tinymce/', include('tinymce.urls')), # URL для загрузки файлов через TinyMCE
-    path('tinymce/upload/', upload_media, name='tinymce_upload'),
 ]
 
-# Добавляем обработку статических файлов в режиме DEBUG
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,35 +1,74 @@
 {% extends 'base.html' %}
-
 {% block content %}
-    <h1>Объявления</h1>
 
-    <div class="advertisements">
-        {% for advertisement in advertisements %}
-            <div class="advertisement">
-                <h2><a href="{% url 'advertisement_detail' advertisement.id %}">{{ advertisement.title }}</a></h2>
-                <p>{{ advertisement.content|truncatewords:20 }}</p>
-                <p>Категория: {{ advertisement.get_category_display }}</p>
-                <p>Дата создания: {{ advertisement.created_at }}</p>
-            </div>
-        {% endfor %}
-    </div>
+<!-- Список категорий -->
+<div class="mb-3">
+    <strong>Категории:</strong>
+    <a href="{% url 'advertisement_list' %}" class="btn btn-sm btn-outline-light {% if not current_category %}active{% endif %}">Все</a>
+    {% for code, label in categories %}
+        <a href="?category={{ code }}" class="btn btn-sm btn-outline-light {% if current_category == code %}active{% endif %}">{{ label }}</a>
+    {% endfor %}
+</div>
 
-    <!-- Пагинация -->
-    <div class="pagination">
-        <span class="step-links">
-            {% if advertisements.has_previous %}
-                <a href="?page=1">&laquo; первая</a>
-                <a href="?page={{ advertisements.previous_page_number }}">предыдущая</a>
-            {% endif %}
+<!-- Список объявлений -->
+<div class="list-group">
+    {% for ad in advertisements %}
+        <div class="list-group-item bg-dark text-light mb-3">
+            <h5>{{ ad.title }}</h5>
+            <p class="text-muted">{{ ad.created_at|date:"d M Y" }}</p>
+            <a href="{% url 'advertisement_detail' ad.pk %}" class="btn btn-sm btn-outline-info">Подробнее</a>
+        </div>
+    {% empty %}
+        <p>Объявлений нет.</p>
+    {% endfor %}
+</div>
 
-            <span class="current">
-                Страница {{ advertisements.number }} из {{ advertisements.paginator.num_pages }}.
-            </span>
+<!-- Пагинация -->
+<div class="mt-3">
+    {% if is_paginated %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
 
-            {% if advertisements.has_next %}
-                <a href="?page={{ advertisements.next_page_number }}">следующая</a>
-                <a href="?page={{ advertisements.paginator.num_pages }}">последняя &raquo;</a>
-            {% endif %}
-        </span>
-    </div>
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% if current_category %}category={{ current_category }}&{% endif %}page={{ page_obj.previous_page_number }}">«</a>
+                    </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if current_category %}category={{ current_category }}&{% endif %}page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% elif num == 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if current_category %}category={{ current_category }}&{% endif %}page=1">1</a>
+                        </li>
+                        {% if page_obj.number > 4 %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% elif num == page_obj.paginator.num_pages %}
+                        {% if page_obj.number < page_obj.paginator.num_pages|add:'-3' %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if current_category %}category={{ current_category }}&{% endif %}page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% if current_category %}category={{ current_category }}&{% endif %}page={{ page_obj.next_page_number }}">»</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+
 {% endblock %}

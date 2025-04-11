@@ -134,8 +134,6 @@ TINYMCE_DEFAULT_CONFIG = {
     'theme': 'modern',
     'height': 400,
     'width': 800,
-    'plugins': 'autolink,link,image,media,fullscreen',
-    'toolbar1': 'undo redo | styleselect | bold italic | alignleft aligncenter alignright | image media | link | fullscreen',
     'toolbar2': '',
     'file_picker_callback': 'function(callback, value, meta) { /* Custom file picker logic here */ }',
     'image_upload_url': '/tinymce/upload/',  # URL для загрузки изображений

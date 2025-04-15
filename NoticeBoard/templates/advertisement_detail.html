@@ -1,41 +1,80 @@
 {% extends 'base.html' %}
 
+{% block title %}
+{{ advertisement.title}}
+{% endblock title %}
+
 {% block content %}
     <h1>{{ advertisement.title }}</h1>
-<p>Категория: {{ advertisement.get_category_display }}</p>
-<p>Дата создания: {{ advertisement.created_at }}</p>
+    <p>Категория: {{ advertisement.get_category_display }}</p>
 
-<div class="content">
-    {{ advertisement.content|safe }}
-</div>
+    <div class="content">
+        {{ advertisement.content|safe }}
+    </div>
 
-<div class="media">
-    {% for media in advertisement.media.all %}
-        <div class="media-item">
-            {% if media.media_type == 'image' %}
-                <img src="{{ media.file.url }}" alt="Image" />
-            {% elif media.media_type == 'video' %}
-                <video controls>
-                    <source src="{{ media.file.url }}" type="video/mp4">
-                </video>
-            {% endif %}
-        </div>
-    {% empty %}
-        <p>Нет медиафайлов.</p>
-    {% endfor %}
-</div>
+    <p class="text-muted text-end">Дата создания: {{ advertisement.created_at|date:"d M Y" }}</p>
 
-<h3>Отклики</h3>
-<div class="responses">
-    {% for response in accepted_responses %}
-        <div class="response">
-            <p><strong>{{ response.author.username }}</strong>: {{ response.content }}</p>
-            <p>Дата отклика: {{ response.created_at }}</p>
-        </div>
-    {% empty %}
-        <p>Нет откликов.</p>
-    {% endfor %}
-</div>
+    <div class="media">
+        {% for media in advertisement.media.all %}
+            <div class="media-item">
+                {% if media.media_type == 'image' %}
+                    <img src="{{ media.file.url }}" alt="Image" />
+                {% elif media.media_type == 'video' %}
+                    <video controls>
+                        <source src="{{ media.file.url }}" type="video/mp4">
+                    </video>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
 
+    <h4>Написать отклик</h4>
+    <form id="response-form" method="post">
+    {% csrf_token %}
+    <textarea name="content" id="content" rows="4" class="form-control" placeholder="Ваш отклик..."></textarea>
+    <button type="submit" class="btn btn-primary mt-3">Отправить отклик</button>
+</form>
+
+<script>
+document.getElementById('response-form').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const textarea = document.getElementById('content');
+    const content = textarea.value.trim();
+    if (!content) return;
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    const response = await fetch("{% url 'respond_to_ad' advertisement.pk %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({ content }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+        alert('Отклик отправлен!');
+        textarea.value = '';
+    } else {
+        alert(data.error || 'Произошла ошибка.');
+    }
+});
+</script>
+
+    <h3>Отклики</h3>
+    <div class="responses">
+        {% for response in accepted_responses %}
+            <div class="response">
+                <p><strong>{{ response.author.username }}</strong>: {{ response.content }}</p>
+                <p>Дата отклика: {{ response.created_at|date:"d M Y" }}</p>
+            </div>
+        {% empty %}
+            <p>Нет откликов.</p>
+        {% endfor %}
+    </div>
 
 {% endblock %}

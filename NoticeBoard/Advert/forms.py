@@ -12,8 +12,9 @@
 
 from django import forms
 from django.core.exceptions import ValidationError
-from .models import Advertisement, CATEGORY_CHOICES
+from .models import Advertisement, CATEGORY_CHOICES, Response
 from tinymce.widgets import TinyMCE
+
 
 
 class AdvertisementForm(forms.ModelForm):
@@ -55,4 +56,18 @@ class AdvertisementForm(forms.ModelForm):
         if videos > 2:
             raise ValidationError('Вы можете загрузить не более 2 видео.')
 
+         # Добавляем проверку на уникальность контента (если нужно)
+        content = cleaned_data.get('content', '')
+        if Advertisement.objects.filter(content=content).exists():
+            raise ValidationError('Объявление с таким содержанием уже существует.')
+
         return cleaned_data
+
+class ResponseForm(forms.ModelForm):
+    class Meta:
+        model = Response
+        fields = ['content']
+        widgets = {
+            'content': forms.Textarea(attrs={'rows': 4, 'class': 'form-control', 'placeholder': 'Ваш отклик...'}),
+        }
+

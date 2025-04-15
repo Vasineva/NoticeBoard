@@ -70,8 +70,6 @@ class Newsletter(models.Model):
     body = models.TextField()
     created_at = models.DateTimeField(default=timezone.now)
     sent_at = models.DateTimeField(blank=True, null=True)
-    subscribers = models.ManyToManyField(User, through='NewsletterSubscription',
-                                         related_name='subscriptions')
 
     def __str__(self):
         return self.subject
@@ -90,10 +88,3 @@ class Media(models.Model):
         return f"{self.media_type or 'Без типа'} для {self.advertisement.title}"
 
 
-class NewsletterSubscription(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    newsletter = models.ForeignKey(Newsletter, on_delete=models.CASCADE)
-    subscribed_at = models.DateTimeField(default=timezone.now)
-
-    def __str__(self):
-        return f'{self.user.username} subscribed to {self.newsletter.subject}'

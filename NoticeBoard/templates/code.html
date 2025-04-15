@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Подтверждение регистрации{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h2 class="mb-4">Подтверждение регистрации</h2>
+    <p>На указанный e-mail был отправлен код подтверждения.</p>
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="code" class="form-label">Введите код</label>
+            <input type="text" class="form-control" id="code" name="code" required>
+        </div>
+        <button type="submit" class="btn btn-success">Подтвердить</button>
+    </form>
+</div>
+{% endblock %}

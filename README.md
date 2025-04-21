@@ -39,7 +39,7 @@ NoticeBoard — Доска объявлений с рассылкой новос
 
 - Все формы защищены CSRF.
 - Только автор может редактировать/удалять свои объявления.
-- Проверка прав осуществляется через миксины (LoginRequiredMixin, OwnerRequiredMixin).
+- Проверка прав осуществляется через миксины (LoginRequiredMixin, OwnerRequiredMixin, IsMarketerMixin).
 
 Структура проекта:
 

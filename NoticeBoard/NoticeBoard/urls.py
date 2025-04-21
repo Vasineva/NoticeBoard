@@ -28,6 +28,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('Advert/', include('Advert.urls')),
     path('tinymce/', include('tinymce.urls')), # URL для загрузки файлов через TinyMCE
+
 ]
 
 

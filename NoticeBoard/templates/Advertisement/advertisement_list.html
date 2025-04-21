@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Объявления
+{% endblock title %}
+
+{% block content %}
+
+<!-- Список категорий -->
+<div class="mb-3">
+    <strong>Категории:</strong>
+    <a href="{% url 'advertisement_list' %}" class="btn btn-sm btn-outline-light {% if not current_category %}active{% endif %}">Все</a>
+    {% for code, label in categories %}
+        <a href="?category={{ code }}" class="btn btn-sm btn-outline-light {% if current_category == code %}active{% endif %}">{{ label }}</a>
+    {% endfor %}
+</div>
+
+<!-- Список объявлений -->
+<div class="list-group">
+    {% for ad in advertisements %}
+        <div class="list-group-item bg-dark text-light mb-3">
+            <h5>{{ ad.title }}</h5>
+            <p class="text-muted">{{ ad.created_at|date:"d M Y" }}</p>
+            <a href="{% url 'advertisement_detail' ad.pk %}" class="btn btn-sm btn-outline-info">Подробнее</a>
+        </div>
+    {% empty %}
+        <p>Объявлений нет.</p>
+    {% endfor %}
+</div>
+
+<!-- Пагинация -->
+{% if page_obj.has_previous %}
+       <a href="?page=1">1</a>
+       {% if page_obj.previous_page_number != 1 %}
+           ...
+           <a href="?page={{ page_obj.previous_page_number }}">{{ page_obj.previous_page_number }}</a>
+       {% endif %}
+    {% endif %}
+
+    {# Информация о текущей странице #}
+    {{ page_obj.number }}
+
+    {# Информация о следующих страницах #}
+    {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}">{{ page_obj.next_page_number }}</a>
+        {% if paginator.num_pages != page_obj.next_page_number %}
+            ...
+            <a href="?page={{ page_obj.paginator.num_pages }}">{{ page_obj.paginator.num_pages }}</a>
+        {% endif %}
+    {% endif %}
+
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Создание объявления{% endblock %}
+
+{% block content %}
+<h2>Создать новое объявление</h2>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Создать объявление</button>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.tiny.cloud/1/9xs96to835nust6ke19nqgza4ifo0j9g4xtizu8eixjng0gg/tinymce/5/tinymce.min.js"></script>
+<script>
+    var csrf_token = '{{ csrf_token }}';
+    tinymce.init({
+        selector: '#id_content',
+        plugins: 'emoticons image media link',
+        language: 'ru',
+        toolbar: 'undo redo | styleselect | bold italic | alignleft aligncenter alignright | image media | emoticons | link | fullscreen',
+        relative_urls: false,
+        convert_urls: false,
+        file_picker_callback: function(callback, value, meta) {
+            var input = document.createElement('input');
+            input.setAttribute('type', 'file');
+
+            if (meta.filetype === 'image') {
+                input.setAttribute('accept', 'image/*');
+            } else if (meta.filetype === 'media') {
+                input.setAttribute('accept', 'video/*');
+            } else {
+                return;
+            }
+
+            input.click();
+
+            input.onchange = function() {
+                var file = input.files[0];
+                var formData = new FormData();
+                formData.append('file', file);
+
+                fetch('/Advert/tinymce/upload/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrf_token,
+                        'Referer': window.location.href,
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.location) {
+                        callback(data.location, { alt: file.name });
+                    } else {
+                        console.error('Ошибка загрузки файла');
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка при загрузке файла:', error);
+                });
+            };
+        }
+    });
+</script>
+{% endblock %}

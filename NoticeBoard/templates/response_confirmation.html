@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Отклик отправлен
+{% endblock title %}
+
+{% block content %}
+<h1>Ваш отклик отправлен</h1>
+<p>После подтверждения отклика автором, вам будет отправлено уведомление e-mail.</p>
+
+<!-- Кнопка для возврата на детальную страницу объявления -->
+<a href="{% url 'advertisement_detail' advertisement.pk %}" class="btn btn-primary">Вернуться к объявлению</a>
+{% endblock %}

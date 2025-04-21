@@ -1,110 +1,51 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>Личный кабинет</h1>
+    <h1>Отклики на мои объявления</h1>
 
     <div class="mb-3">
-        <button id="logout-btn" class="btn btn-danger">Выйти</button>
-    </div>
-
-    <div class="mb-3">
-        {% if advertisements %}
-            <button class="btn btn-primary" data-bs-toggle="collapse" data-bs-target="#advertisements-list">
-                Мои объявления ({{ advertisements.count }})
-            </button>
-            <div id="advertisements-list" class="collapse mt-3">
-                <ul class="list-group">
-                    {% for ad in advertisements %}
-                        <li class="list-group-item">
-                            <a href="{% url 'advertisement_detail' ad.pk %}">{{ ad.title }}</a>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-        {% else %}
-            <p>У вас нет объявлений.</p>
-        {% endif %}
-    </div>
-
-    <div class="mb-3">
-        <button class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#responses-list">
-            Мои отклики ({{ responses.count }})
-        </button>
-        <div id="responses-list" class="collapse mt-3">
-            <ul class="nav nav-tabs">
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link {% if selected_ad_id is none %}active{% endif %}" href="{% url 'my_responses' %}">
+                    Все объявления
+                </a>
+            </li>
+            {% for ad in advertisements %}
                 <li class="nav-item">
-                    <a class="nav-link {% if selected_ad_id is none %}active{% endif %}" href="{% url 'my_profile' %}">
-                        Все отклики
+                    <a class="nav-link {% if selected_ad_id == ad.id %}active{% endif %}" href="?ad_id={{ ad.id }}">
+                        {{ ad.title }}
                     </a>
                 </li>
-                {% for ad in advertisements %}
-                    <li class="nav-item">
-                        <a class="nav-link {% if selected_ad_id == ad.id %}active{% endif %}" href="?ad_id={{ ad.id }}">
-                            Отклики на "{{ ad.title }}"
-                        </a>
-                    </li>
-                {% endfor %}
-            </ul>
-
-            <div class="mt-3">
-                <h5>Принятые отклики</h5>
-                {% if accepted_responses %}
-                    <ul class="list-group">
-                        {% for response in accepted_responses %}
-                            <li class="list-group-item">
-                                <p><strong>{{ response.author.username }}</strong>: {{ response.content }}</p>
-                                <p>Дата: {{ response.created_at|date:"d M Y" }}</p>
-                                <p>К объявлению: <a href="{% url 'advertisement_detail' response.advertisement.pk %}">{{ response.advertisement.title }}</a></p>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p>Нет принятых откликов.</p>
-                {% endif %}
-
-                <h5>Непринятые отклики</h5>
-                {% if pending_responses %}
-                    <ul class="list-group">
-                        {% for response in pending_responses %}
-                            <li class="list-group-item">
-                                <p><strong>{{ response.author.username }}</strong>: {{ response.content }}</p>
-                                <p>Дата: {{ response.created_at|date:"d M Y" }}</p>
-                                <p>К объявлению: <a href="{% url 'advertisement_detail' response.advertisement.pk %}">{{ response.advertisement.title }}</a></p>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p>Нет непринятых откликов.</p>
-                {% endif %}
-            </div>
-        </div>
+            {% endfor %}
+        </ul>
     </div>
 
-    <!-- Модальное окно для подтверждения выхода -->
-    <div class="modal fade" id="logout-modal" tabindex="-1" aria-labelledby="logout-modal-label" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="logout-modal-label">Выход</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    Вы уверены, что хотите выйти из аккаунта?
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <a href="{% url 'logout' %}" class="btn btn-danger">Выйти</a>
-                </div>
-            </div>
-        </div>
-    </div>
-{% endblock %}
+    {% if responses %}
+        <ul class="list-group mt-3">
+            {% for response in responses %}
+                <li class="list-group-item">
+                    <p><strong>Автор:</strong> {{ response.author.username }}</p>
+                    <p><strong>Отклик:</strong> {{ response.content }}</p>
+                    <p><strong>Дата:</strong> {{ response.created_at|date:"d M Y H:i" }}</p>
+                    <div class="d-flex gap-2">
+                        {% if not response.is_accepted %}
+                            <form method="post" action="{% url 'accept_response' response.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm">Принять</button>
+                            </form>
+                        {% else %}
+                            <button class="btn btn-secondary btn-sm" disabled>Принято</button>
+                        {% endif %}
 
-{% block scripts %}
-    <script>
-        document.getElementById('logout-btn').addEventListener('click', function () {
-            var myModal = new bootstrap.Modal(document.getElementById('logout-modal'));
-            myModal.show();
-        });
-    </script>
+                        <form method="post" action="{% url 'delete_response' response.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+                        </form>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="mt-3">Нет откликов для выбранного объявления.</p>
+    {% endif %}
 {% endblock %}

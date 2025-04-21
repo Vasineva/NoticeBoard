@@ -1,8 +1,62 @@
 {% extends 'base.html' %}
 
-{% block content %}
-<h2>Страница авторизованного пользователя {{request.user.username}}</h2>
-<div> Здесь может содержаться персональная информация для каждого пользователя </div>
+{% block title %}Мои объявления{% endblock %}
 
-<button> <a href="sign/logout/">Выйти</a> </button>
+{% block content %}
+<h2 class="mb-4">Привет, {{ request.user.username }}!</h2>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <a href="{% url 'my_responses' %}" class="btn btn-secondary">Отклики на мои объявления</a>
+
+    <div class="d-flex gap-2">
+        <a href="{% url 'advertisement_create' %}" class="btn btn-success">Создать объявление</a>
+        <form method="post" action="{% url 'logout' %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Выйти</button>
+        </form>
+    </div>
+</div>
+
+{% if advertisements %}
+    <h4 class="mb-3">Мои объявления:</h4>
+    <ul class="list-group mb-4">
+        {% for ad in advertisements %}
+            <li class="list-group-item">
+                <h5>{{ ad.title }}</h5>
+                <p class="mb-1">Категория: {{ ad.get_category_display }}</p>
+                <p class="mb-1 text-muted">Создано: {{ ad.created_at|date:"d M Y H:i" }}</p>
+                <div class="mt-2">
+                    <a href="{% url 'advertisement_detail' ad.pk %}" class="btn btn-sm btn-outline-primary">Посмотреть</a>
+                    <a href="{% url 'advertisement_update' ad.pk %}" class="btn btn-sm btn-outline-warning">Редактировать</a>
+                    <a href="{% url 'advertisement_delete' ad.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+
+    {# ПАГИНАЦИЯ: НАЧАЛО #}
+    {% if page_obj.has_previous %}
+       <a href="?page=1">1</a>
+       {% if page_obj.previous_page_number != 1 %}
+           ...
+           <a href="?page={{ page_obj.previous_page_number }}">{{ page_obj.previous_page_number }}</a>
+       {% endif %}
+    {% endif %}
+
+    {# Информация о текущей странице #}
+    {{ page_obj.number }}
+
+    {# Информация о следующих страницах #}
+    {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}">{{ page_obj.next_page_number }}</a>
+        {% if paginator.num_pages != page_obj.next_page_number %}
+            ...
+            <a href="?page={{ page_obj.paginator.num_pages }}">{{ page_obj.paginator.num_pages }}</a>
+        {% endif %}
+    {% endif %}
+    {# ПАГИНАЦИЯ: КОНЕЦ #}
+
+{% else %}
+    <p class="text-muted">У вас пока нет объявлений.</p>
+{% endif %}
 {% endblock %}

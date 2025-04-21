@@ -1,36 +1,29 @@
 from django.views.generic import (CreateView, ListView, DetailView,
                                   DeleteView, UpdateView, TemplateView)
-from .models import Advertisement, Response, User
-from .forms import AdvertisementForm, ResponseForm
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
-from django.utils.decorators import method_decorator
+from django.contrib.auth import login
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.conf import settings
-import os
-import uuid
 from django.urls import reverse_lazy
+from django.utils.decorators import method_decorator
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import render, get_object_or_404, redirect
-from django.views.decorators.http import require_POST
-import secrets
+from .models import Advertisement, Response, User
+from .forms import AdvertisementForm, ResponseForm
+import os
+import uuid
+import random
+import string
 from django.core.mail import send_mail
-from django.contrib.auth import login
-from django.utils import timezone
-from datetime import timedelta
 
 
-
-
-
-
-
-
-@csrf_exempt
 # функция загружает медиафайлы на сервер
+@csrf_exempt
 def upload_media(request):
     if request.method == 'POST' and request.FILES.get('file'):
         uploaded_file = request.FILES['file']
@@ -65,7 +58,7 @@ def upload_media(request):
 class AdvertisementListView(ListView):
     model = Advertisement
     ordering = ['-created_at']
-    template_name = 'advertisement_list.html'
+    template_name = 'Advertisement/advertisement_list.html'
     context_object_name = 'advertisements'
     paginate_by = 20
 
@@ -88,7 +81,7 @@ class AdvertisementListView(ListView):
 # подробную информацию о конкретном объявлении.
 class AdvertisementDetailView(DetailView):
     model = Advertisement
-    template_name = 'advertisement_detail.html'
+    template_name = 'Advertisement/advertisement_detail.html'
     context_object_name = 'advertisement'
 
     # Все медиафайлы Отклики
@@ -102,13 +95,15 @@ class AdvertisementDetailView(DetailView):
         # Только подтвержденные отклики
         context['accepted_responses'] = advertisement.responses.filter(is_accepted=True)
 
+        context['response_form'] = ResponseForm()
+
         return context
 
 #создания нового объявления
 class AdvertisementCreateView(LoginRequiredMixin, CreateView):
     model = Advertisement
     form_class = AdvertisementForm
-    template_name = 'advertisement_create.html'
+    template_name = 'Advertisement/advertisement_create.html'
     success_url = reverse_lazy('advertisement_list')
 
     def form_valid(self, form):
@@ -119,7 +114,7 @@ class AdvertisementCreateView(LoginRequiredMixin, CreateView):
 class AdvertisementUpdateView(LoginRequiredMixin, UpdateView):
     model = Advertisement
     form_class = AdvertisementForm
-    template_name = 'advertisement_create.html'  # Используем тот же шаблон, что и для создания
+    template_name = 'Advertisement/advertisement_create.html'  # Используем тот же шаблон, что и для создания
     context_object_name = 'advertisement'
     success_url = reverse_lazy('advertisement_list')
 
@@ -130,9 +125,10 @@ class AdvertisementUpdateView(LoginRequiredMixin, UpdateView):
             raise PermissionDenied("Вы не автор этого объявления.")
         return obj
 
+# Удалить обявления
 class AdvertisementDeleteView(LoginRequiredMixin, DeleteView):
     model = Advertisement
-    template_name = 'advertisement_delete.html'
+    template_name = 'Advertisement/advertisement_delete.html'
     context_object_name = 'advertisement'
     success_url = reverse_lazy('advertisement_list')
 
@@ -144,27 +140,28 @@ class AdvertisementDeleteView(LoginRequiredMixin, DeleteView):
             raise PermissionDenied("Вы не автор этого объявления.")
         return obj
 
+#обрабатывает отправку откликов на объявления
 @require_POST
 @login_required
-#обрабатывает отправку откликов на объявления
 def respond_to_ad(request, pk):
     advertisement = get_object_or_404(Advertisement, pk=pk)
     form = ResponseForm(request.POST)
+
     if form.is_valid():
         response = form.save(commit=False)
         response.advertisement = advertisement
         response.author = request.user
         response.save()
 
-        return JsonResponse({
-            'content': response.content,
-            'author': response.author.username,
-            'created_at': response.created_at.strftime('%d %b %Y'),
+        # Перенаправляем на страницу с сообщением об успешном отклике
+        return render(request, 'response_confirmation.html', {
+            'advertisement': advertisement
         })
+
     return JsonResponse({'error': 'Ошибка при отправке отклика'}, status=400)
 
-@method_decorator(login_required, name='dispatch')
 #отображает отклики текущего пользователя на его объявления.
+@method_decorator(login_required, name='dispatch')
 class MyResponsesView(TemplateView):
     template_name = 'my_responses.html'
 
@@ -179,9 +176,14 @@ class MyResponsesView(TemplateView):
             selected_ad_id = None
 
         if selected_ad_id:
-            responses = Response.objects.filter(advertisement_id=selected_ad_id, advertisement__author=self.request.user)
+            responses = Response.objects.filter(
+                advertisement_id=selected_ad_id,
+                advertisement__author=self.request.user
+            ).order_by('is_accepted', '-created_at')
         else:
-            responses = Response.objects.filter(advertisement__author=self.request.user)
+            responses = Response.objects.filter(
+                advertisement__author=self.request.user
+            ).order_by('is_accepted', '-created_at')
 
         context.update({
             'advertisements': advertisements,
@@ -190,92 +192,82 @@ class MyResponsesView(TemplateView):
         })
         return context
 
-@login_required
 # Устанавливает отклик как подтвержденный
+@login_required
 def accept_response(request, pk):
     response = get_object_or_404(Response, pk=pk, advertisement__author=request.user)
     response.is_accepted = True
     response.save()
     return redirect('my_responses')
 
-@login_required
 #Удаляет отклик
+@login_required
 def delete_response(request, pk):
     response = get_object_or_404(Response, pk=pk, advertisement__author=request.user)
     response.delete()
     return redirect('my_responses')
 
-class IndexView(LoginRequiredMixin, TemplateView):
+#Страница пользователя
+class IndexView(LoginRequiredMixin, ListView):
+    model = Advertisement
     template_name = 'index.html'
+    context_object_name = 'advertisements'
+    paginate_by = 20
+    ordering = ['-created_at']
 
-def generate_code():
-    return secrets.token_urlsafe(4)
+    def get_queryset(self):
+        # Фильтрация объявлений по автору (только для текущего пользователя)
+        return Advertisement.objects.filter(author=self.request.user).order_by('-created_at')
 
-def register_view(request):
+# Генерация одноразового кода
+def generate_code(length=6):
+    return ''.join(random.choices(string.digits, k=length))
+
+# форма регистрации
+def usual_login_view(request):
     if request.method == 'POST':
-        email = request.POST.get('email')
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        email = request.POST['email']
+        username = request.POST['username']
+        password = request.POST['password']
 
-        if not email or not username or not password:
-            return render(request, 'authorization.html', {'error': 'Все поля обязательны'})
-
-        if User.objects.filter(email=email).exists():
-            return render(request, 'authorization.html', {'error': 'E-mail уже зарегистрирован'})
-
-        # Сохраняем временные данные в сессии
-        request.session['registration_data'] = {
-            'email': email,
-            'username': username,
-            'password': password,
-        }
+        request.session['email'] = email
+        request.session['username'] = username
+        request.session['password'] = password
 
         code = generate_code()
-        request.session['verification_code'] = code
-        request.session['code_created_at'] = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+        request.session['reg_code'] = code
 
         send_mail(
-            'Подтверждение регистрации',
+            'Код подтверждения регистрации',
             f'Ваш код: {code}',
             'vasinevakatirina@yandex.ru',
             [email],
-            fail_silently=False,
         )
 
-        return render(request, 'code.html')
+        return redirect('confirm_code')
+    return render(request, 'signup.html')
 
-    return render(request, 'authorization.html')
-
-def confirm_code_view(request):
+# подтверждение кода
+def login_with_code_view(request):
     if request.method == 'POST':
-        code_input = request.POST.get('code')
-        code_session = request.session.get('verification_code')
-        code_time_str = request.session.get('code_created_at')
-        registration_data = request.session.get('registration_data')
+        entered_code = request.POST['code']
+        real_code = request.session.get('reg_code')
 
-        if not registration_data or not code_session or not code_time_str:
-            return render(request, 'code.html', {'error': 'Регистрация не найдена или код не создан'})
+        if entered_code == real_code:
+            username = request.session.get('username')
+            email = request.session.get('email')
+            password = request.session.get('password')
 
-        code_time = timezone.datetime.strptime(code_time_str, '%Y-%m-%d %H:%M:%S')
-        if timezone.now() - code_time > timedelta(minutes=5):
-            return render(request, 'code.html', {'error': 'Код устарел'})
+            user = User.objects.create_user(username=username, email=email, password=password)
+            login(request, user)
 
-        if code_input != code_session:
+            # очистка
+            request.session.pop('reg_code', None)
+            request.session.pop('username', None)
+            request.session.pop('email', None)
+            request.session.pop('password', None)
+
+            return redirect('my_profile')
+        else:
             return render(request, 'code.html', {'error': 'Неверный код'})
-
-        # Всё ок — создаем пользователя
-        user = User.objects.create_user(
-            username=registration_data['username'],
-            email=registration_data['email'],
-            password=registration_data['password']
-        )
-        login(request, user)
-
-        # Очищаем сессию
-        for key in ['registration_data', 'verification_code', 'code_created_at']:
-            request.session.pop(key, None)
-
-        return redirect('my_profile')
-
     return render(request, 'code.html')
-

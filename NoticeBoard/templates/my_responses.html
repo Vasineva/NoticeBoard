@@ -10,6 +10,7 @@
                     Все объявления
                 </a>
             </li>
+            <!-- Вкладки по отдельным объявлениям -->
             {% for ad in advertisements %}
                 <li class="nav-item">
                     <a class="nav-link {% if selected_ad_id == ad.id %}active{% endif %}" href="?ad_id={{ ad.id }}">
@@ -29,6 +30,7 @@
                     <p><strong>Дата:</strong> {{ response.created_at|date:"d M Y H:i" }}</p>
                     <div class="d-flex gap-2">
                         {% if not response.is_accepted %}
+                        <!-- Принятие отклика  -->
                             <form method="post" action="{% url 'accept_response' response.id %}">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-success btn-sm">Принять</button>
@@ -36,7 +38,7 @@
                         {% else %}
                             <button class="btn btn-secondary btn-sm" disabled>Принято</button>
                         {% endif %}
-
+                        <!-- Удаление отклика. Удалить = откланить  -->
                         <form method="post" action="{% url 'delete_response' response.id %}">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-danger btn-sm">Удалить</button>

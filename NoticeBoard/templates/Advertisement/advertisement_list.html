@@ -37,10 +37,8 @@
        {% endif %}
     {% endif %}
 
-    {# Информация о текущей странице #}
     {{ page_obj.number }}
 
-    {# Информация о следующих страницах #}
     {% if page_obj.has_next %}
         <a href="?page={{ page_obj.next_page_number }}">{{ page_obj.next_page_number }}</a>
         {% if paginator.num_pages != page_obj.next_page_number %}

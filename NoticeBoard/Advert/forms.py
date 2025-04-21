@@ -1,21 +1,7 @@
-"""
-
-Данный код описывает форму AdvertisementForm, основанную на модели Advertisement в рамках проекта Django.
-Форма используется для создания и редактирования объявлений, обеспечивая при этом:
-- соблюдение уникальности заголовка и содержания.
-- выбор категории из предустановленного списка.
-- ограничение на количество медиафайлов (не более 2 изображений и 2 видео).
-
-"""
-
-
-
 from django import forms
 from django.core.exceptions import ValidationError
-from .models import Advertisement, CATEGORY_CHOICES, Response
+from .models import Advertisement, CATEGORY_CHOICES, Response, Mailing
 from tinymce.widgets import TinyMCE
-
-
 
 class AdvertisementForm(forms.ModelForm):
     class Meta:
@@ -47,16 +33,16 @@ class AdvertisementForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
 
-        # Проверка на количество медиафайлов (не более 2 изображений и 2 видео)
-        images = cleaned_data.get('content', '').count('<img')  # Можно изменить, чтобы учитывать загруженные медиа
-        videos = cleaned_data.get('content', '').count('<video')  # То же самое для видео
+        # Проверка на количество медиафайлов
+        images = cleaned_data.get('content', '').count('<img')
+        videos = cleaned_data.get('content', '').count('<video')
 
         if images > 2:
             raise ValidationError('Вы можете загрузить не более 2 изображений.')
         if videos > 2:
             raise ValidationError('Вы можете загрузить не более 2 видео.')
 
-         # Добавляем проверку на уникальность контента (если нужно)
+         # Проверка на уникальность контента
         content = cleaned_data.get('content', '')
         if Advertisement.objects.filter(content=content).exists():
             raise ValidationError('Объявление с таким содержанием уже существует.')
@@ -70,4 +56,14 @@ class ResponseForm(forms.ModelForm):
         widgets = {
             'content': forms.Textarea(attrs={'rows': 4, 'class': 'form-control', 'placeholder': 'Ваш отклик...'}),
         }
+
+class RegistrationForm(forms.Form):
+    email = forms.EmailField()
+    username = forms.CharField(max_length=150)
+    password = forms.CharField(widget=forms.PasswordInput())
+
+class MailingForm(forms.ModelForm):
+    class Meta:
+        model = Mailing
+        fields = ['title', 'message']
 

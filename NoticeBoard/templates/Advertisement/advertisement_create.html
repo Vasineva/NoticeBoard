@@ -12,19 +12,28 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<!-- Подключение и настройка TinyMCE (WYSIWYG редактор) -->
+
 <script src="https://cdn.tiny.cloud/1/9xs96to835nust6ke19nqgza4ifo0j9g4xtizu8eixjng0gg/tinymce/5/tinymce.min.js"></script>
 <script>
     var csrf_token = '{{ csrf_token }}';
+
     tinymce.init({
         selector: '#id_content',
         plugins: 'emoticons image media link',
+        <!-- Подключаем плагины: эмодзи, изображения, медиафайлы и ссылки -->
         language: 'ru',
         toolbar: 'undo redo | styleselect | bold italic | alignleft aligncenter alignright | image media | emoticons | link | fullscreen',
+        <!-- Панель инструментов редактора: кнопки для отмены/повтора, стилей, форматирования, медиа и т. д. -->
+
         relative_urls: false,
         convert_urls: false,
+        <!-- Отключаем преобразование URL в относительные (оставляем абсолютные) -->
+
         file_picker_callback: function(callback, value, meta) {
             var input = document.createElement('input');
             input.setAttribute('type', 'file');
+            <!-- Создаем элемент input для выбора файлов -->
 
             if (meta.filetype === 'image') {
                 input.setAttribute('accept', 'image/*');
@@ -35,11 +44,13 @@
             }
 
             input.click();
+            <!-- Имитируем клик по элементу input для открытия диалога выбора файла -->
 
             input.onchange = function() {
                 var file = input.files[0];
                 var formData = new FormData();
                 formData.append('file', file);
+                <!-- Создаем FormData объект для отправки файла на сервер -->
 
                 fetch('/Advert/tinymce/upload/', {
                     method: 'POST',
@@ -53,6 +64,7 @@
                 .then(data => {
                     if (data.location) {
                         callback(data.location, { alt: file.name });
+                        <!-- Если файл загружен успешно, передаем его URL в редактор -->
                     } else {
                         console.error('Ошибка загрузки файла');
                     }

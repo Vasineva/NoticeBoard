@@ -27,8 +27,8 @@ def send_response_notification(sender, instance, created, **kwargs):
         send_mail(
             subject='Ваш отклик принят!',
             message=(
-                f'Ваш отклик на объявление "{instance.advertisement.title}" был принят автором.\n\n'
-                f'Спасибо за участие!'
+                f'Ваш отклик на объявление "{instance.advertisement.title}" '
+                f'был принят автором.'
             ),
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[instance.author.email],

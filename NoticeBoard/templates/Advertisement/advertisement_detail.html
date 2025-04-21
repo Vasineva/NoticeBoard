@@ -15,6 +15,7 @@
 <p class="text-muted text-end">Дата создания: {{ advertisement.created_at|date:"d M Y" }}</p>
 
 <div class="media">
+    <!-- Отображения медиафайлов -->
     {% for media in advertisement.media.all %}
         <div class="media-item">
             {% if media.media_type == 'image' %}
@@ -29,17 +30,21 @@
 </div>
 
 <h4>Написать отклик</h4>
+<!-- Форма отправки отклика на объявление -->
 {% if user.is_authenticated %}
+<!-- Проверяем, авторизован ли пользователь, если да, показываем форму для отправки отклика -->
 <form method="post" action="{% url 'respond_to_ad' advertisement.pk %}">
     {% csrf_token %}
     {{ response_form.as_p }}
     <button type="submit" class="btn btn-primary mt-3">Отправить отклик</button>
 </form>
 {% else %}
+    <!-- Если пользователь не авторизован, показываем ссылку для входа в систему -->
     <p>Чтобы откликнуться на объявление, <a href="{% url 'login' %}?next={{ request.path }}">войдите в аккаунт</a>.</p>
 {% endif %}
 
 <h3 class="mt-4">Отклики</h3>
+<!-- Отображения откликов на объявление -->
 <div class="responses">
     {% for response in accepted_responses %}
         <div class="response">

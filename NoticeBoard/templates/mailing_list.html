@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Отправленные рассылки{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Отправленные рассылки</h2>
+{% if object_list %}
+  <ul class="list-group">
+    {% for mailing in object_list %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <strong>{{ mailing.title }}</strong>
+        <small class="text-muted">{{ mailing.created_at|date:"d.m.Y H:i" }}</small>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="text-muted">Нет отправленных рассылок.</p>
+{% endif %}
+{% endblock %}

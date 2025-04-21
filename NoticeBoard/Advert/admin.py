@@ -1,6 +1,7 @@
 from django.contrib import admin
-from .models import Advertisement, Media
+from .models import Advertisement, Mailing
 
 
 admin.site.register(Advertisement)
-admin.site.register(Media)
+admin.site.register(Mailing)
+

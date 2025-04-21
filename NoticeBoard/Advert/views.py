@@ -1,8 +1,8 @@
 from django.views.generic import (CreateView, ListView, DetailView,
                                   DeleteView, UpdateView, TemplateView)
+from django.views.generic.edit import FormView
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login
 from django.core.files.storage import default_storage
@@ -10,17 +10,15 @@ from django.core.files.base import ContentFile
 from django.conf import settings
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import PermissionDenied
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Advertisement, Response, User
-from .forms import AdvertisementForm, ResponseForm
+from .models import Advertisement, Response, User, Mailing
+from .forms import AdvertisementForm, ResponseForm, RegistrationForm, MailingForm
 import os
 import uuid
-import random
-import string
-from django.core.mail import send_mail
-
+from .utils import generate_code, send_registration_email
+from .mixins import OwnerRequiredMixin
+from .tasks import send_mass_mailing
 
 # функция загружает медиафайлы на сервер
 @csrf_exempt
@@ -31,7 +29,7 @@ def upload_media(request):
         # Определяем расширение файла и его тип
         file_extension = uploaded_file.name.split('.')[-1].lower()
 
-        # Проверяем тип файла (изображение или видео)
+        # Проверяем тип файла
         if file_extension in ['jpg', 'jpeg', 'png', 'gif']:
             media_type = 'image'
         elif file_extension in ['mp4', 'mov', 'avi', 'mkv']:
@@ -78,7 +76,7 @@ class AdvertisementListView(ListView):
         context['current_category'] = self.request.GET.get('category')
         return context
 
-# подробную информацию о конкретном объявлении.
+# подробная информация о конкретном объявлении.
 class AdvertisementDetailView(DetailView):
     model = Advertisement
     template_name = 'Advertisement/advertisement_detail.html'
@@ -88,9 +86,6 @@ class AdvertisementDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         advertisement = self.get_object()
-
-        # Медиафайлы
-        context['media_files'] = advertisement.media.all()
 
         # Только подтвержденные отклики
         context['accepted_responses'] = advertisement.responses.filter(is_accepted=True)
@@ -111,54 +106,36 @@ class AdvertisementCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 #редактирования объявления
-class AdvertisementUpdateView(LoginRequiredMixin, UpdateView):
+class AdvertisementUpdateView(LoginRequiredMixin, OwnerRequiredMixin, UpdateView):
     model = Advertisement
     form_class = AdvertisementForm
-    template_name = 'Advertisement/advertisement_create.html'  # Используем тот же шаблон, что и для создания
+    template_name = 'Advertisement/advertisement_create.html'
     context_object_name = 'advertisement'
     success_url = reverse_lazy('advertisement_list')
 
-    def get_object(self, queryset=None):
-        obj = super().get_object(queryset)
-        # Проверяем, является ли текущий пользователь автором объявления
-        if obj.author != self.request.user:
-            raise PermissionDenied("Вы не автор этого объявления.")
-        return obj
-
 # Удалить обявления
-class AdvertisementDeleteView(LoginRequiredMixin, DeleteView):
+class AdvertisementDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     model = Advertisement
     template_name = 'Advertisement/advertisement_delete.html'
     context_object_name = 'advertisement'
     success_url = reverse_lazy('advertisement_list')
 
-    def get_object(self, queryset=None):
-        # Получаем объект объявления
-        obj = super().get_object(queryset)
-        # Проверяем, является ли текущий пользователь автором объявления
-        if obj.author != self.request.user:
-            raise PermissionDenied("Вы не автор этого объявления.")
-        return obj
-
 #обрабатывает отправку откликов на объявления
-@require_POST
-@login_required
-def respond_to_ad(request, pk):
-    advertisement = get_object_or_404(Advertisement, pk=pk)
-    form = ResponseForm(request.POST)
+class RespondToAdView(FormView):
+    form_class = ResponseForm
+    template_name = 'response_form.html'
 
-    if form.is_valid():
+    def form_valid(self, form):
+        advertisement = get_object_or_404(Advertisement, pk=self.kwargs['pk'])
         response = form.save(commit=False)
         response.advertisement = advertisement
-        response.author = request.user
+        response.author = self.request.user
         response.save()
 
-        # Перенаправляем на страницу с сообщением об успешном отклике
-        return render(request, 'response_confirmation.html', {
-            'advertisement': advertisement
-        })
+        return render(self.request, 'response_confirmation.html', {'advertisement': advertisement})
 
-    return JsonResponse({'error': 'Ошибка при отправке отклика'}, status=400)
+    def form_invalid(self, form):
+        return JsonResponse({'error': 'Ошибка при отправке отклика'}, status=400)
 
 #отображает отклики текущего пользователя на его объявления.
 @method_decorator(login_required, name='dispatch')
@@ -210,7 +187,7 @@ def delete_response(request, pk):
 #Страница пользователя
 class IndexView(LoginRequiredMixin, ListView):
     model = Advertisement
-    template_name = 'index.html'
+    template_name = 'registration/index.html'
     context_object_name = 'advertisements'
     paginate_by = 20
     ordering = ['-created_at']
@@ -219,33 +196,29 @@ class IndexView(LoginRequiredMixin, ListView):
         # Фильтрация объявлений по автору (только для текущего пользователя)
         return Advertisement.objects.filter(author=self.request.user).order_by('-created_at')
 
-# Генерация одноразового кода
-def generate_code(length=6):
-    return ''.join(random.choices(string.digits, k=length))
-
 # форма регистрации
 def usual_login_view(request):
     if request.method == 'POST':
-        email = request.POST['email']
-        username = request.POST['username']
-        password = request.POST['password']
+        form = RegistrationForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            username = form.cleaned_data['username']
+            password = form.cleaned_data['password']
 
-        request.session['email'] = email
-        request.session['username'] = username
-        request.session['password'] = password
+            request.session['email'] = email
+            request.session['username'] = username
+            request.session['password'] = password
 
-        code = generate_code()
-        request.session['reg_code'] = code
+            code = generate_code()
+            request.session['reg_code'] = code
 
-        send_mail(
-            'Код подтверждения регистрации',
-            f'Ваш код: {code}',
-            'vasinevakatirina@yandex.ru',
-            [email],
-        )
+            send_registration_email(email, code)
 
-        return redirect('confirm_code')
-    return render(request, 'signup.html')
+            return redirect('confirm_code')
+    else:
+        form = RegistrationForm()
+
+    return render(request, 'registration/signup.html', {'form': form})
 
 # подтверждение кода
 def login_with_code_view(request):
@@ -269,5 +242,28 @@ def login_with_code_view(request):
 
             return redirect('my_profile')
         else:
-            return render(request, 'code.html', {'error': 'Неверный код'})
-    return render(request, 'code.html')
+            return render(request, 'registration/code.html', {'error': 'Неверный код'})
+    return render(request, 'registration/code.html')
+
+#рассылка новостей
+class IsMarketerMixin(UserPassesTestMixin):
+    def test_func(self):
+        return self.request.user.groups.filter(name='Маркетологи').exists()
+
+class MailingCreateView(LoginRequiredMixin, IsMarketerMixin, CreateView):
+    model = Mailing
+    form_class = MailingForm
+    template_name = 'mailing_create.html'
+    success_url = reverse_lazy('mailing_list')
+
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        response = super().form_valid(form)
+        send_mass_mailing.delay(self.object.id)  # запускаем задачу
+        return response
+
+class MailingListView(LoginRequiredMixin, IsMarketerMixin, ListView):
+    model = Mailing
+    template_name = 'mailing_list.html'
+
+

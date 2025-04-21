@@ -10,6 +10,8 @@
 
     <div class="d-flex gap-2">
         <a href="{% url 'advertisement_create' %}" class="btn btn-success">Создать объявление</a>
+
+        <!-- Форма для выхода из аккаунта -->
         <form method="post" action="{% url 'logout' %}" class="d-inline">
             {% csrf_token %}
             <button type="submit" class="btn btn-danger">Выйти</button>
@@ -34,7 +36,7 @@
         {% endfor %}
     </ul>
 
-    {# ПАГИНАЦИЯ: НАЧАЛО #}
+    <!-- Пагинация -->
     {% if page_obj.has_previous %}
        <a href="?page=1">1</a>
        {% if page_obj.previous_page_number != 1 %}
@@ -43,10 +45,8 @@
        {% endif %}
     {% endif %}
 
-    {# Информация о текущей странице #}
     {{ page_obj.number }}
 
-    {# Информация о следующих страницах #}
     {% if page_obj.has_next %}
         <a href="?page={{ page_obj.next_page_number }}">{{ page_obj.next_page_number }}</a>
         {% if paginator.num_pages != page_obj.next_page_number %}
@@ -54,7 +54,6 @@
             <a href="?page={{ page_obj.paginator.num_pages }}">{{ page_obj.paginator.num_pages }}</a>
         {% endif %}
     {% endif %}
-    {# ПАГИНАЦИЯ: КОНЕЦ #}
 
 {% else %}
     <p class="text-muted">У вас пока нет объявлений.</p>
